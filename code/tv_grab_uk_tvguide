@@ -8,7 +8,7 @@
 #         tv_grab_uk_tvguide  --info
 # 
 
-my $_version 	= '$Id: tv_grab_uk_tvguide,v 1.9 2014/01/20 14:19:53 bilbo_uk Exp $';
+my $_version 	= '$Id: tv_grab_uk_tvguide,v 1.11 2014/01/23 13:12:03 bilbo_uk Exp $';
 
 
 eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
@@ -75,18 +75,9 @@ my ($opt, $conf) = ParseOptions({
 			listchannels_sub 	=> \&fetch_channels,
 			version 					=> $VERSION,
 			description 			=> $GRABBER_DESC,
-			extra_options			=> [qw/info/]
 });
 
 #print Dumper($conf); exit;
-
-# options.pm hi-jacks the --help arg and creates its own POD synopsis!  This means we can't tell people about our added
-#  parameters.  I would posit that's a bug.  Let's allow '--info' to replace it.
-if ($opt->{'info'}) {
-	use Pod::Usage;
-  pod2usage(-verbose => 2);
-	exit 1;
-}
 
 # any overrides?
 if (defined( $conf->{'generator-info-name'} )) { $generator_info_name = $conf->{'generator-info-name'}->[0]; }
@@ -281,7 +272,7 @@ sub fetch_listings {
 									if ($showdirector->tag eq 'span' && $showdirector->attr('class') eq 'actor') {
 										if ($showdirector->as_text) {
 											foreach ( split(', ', $showdirector->as_text) ) {
-												push @{$prog{'credits'}{'director'}}, $_;
+												push @{$prog{'credits'}{'director'}}, encode('utf-8', $_);
 											}
 										}
 									}
@@ -296,7 +287,7 @@ sub fetch_listings {
 									if ($showproducer->tag eq 'span' && $showproducer->attr('class') eq 'actor') {
 										if ($showproducer->as_text) {
 											foreach ( split(', ', $showproducer->as_text) ) {
-												push @{$prog{'credits'}{'producer'}}, $_;
+												push @{$prog{'credits'}{'producer'}}, encode('utf-8', $_);
 											}
 										}
 									}
@@ -309,7 +300,7 @@ sub fetch_listings {
 										if ($showproducer->tag eq 'span' && $showproducer->attr('class') eq 'actor') {
 											if ($showproducer->as_text) {
 												foreach ( split(', ', $showproducer->as_text) ) {
-													push @{$prog{'credits'}{'producer'}}, $_;
+													push @{$prog{'credits'}{'producer'}}, encode('utf-8', $_);
 												}
 											}
 										}
@@ -325,7 +316,7 @@ sub fetch_listings {
 									if ($showwriter->tag eq 'span' && $showwriter->attr('class') eq 'actor') {
 										if ($showwriter->as_text) {
 											foreach ( split(', ', $showwriter->as_text) ) {
-												push @{$prog{'credits'}{'writer'}}, $_;
+												push @{$prog{'credits'}{'writer'}}, encode('utf-8', $_);
 											}
 										}
 									}
@@ -351,7 +342,7 @@ sub fetch_listings {
 								if (scalar @showactors > 0) {
 									foreach my $showactor (@showactors) {
 										if ($showactor->as_text ne '(IMDB)') { 	# ignore IMDB link spans
-											push @{$prog{'credits'}{'actor'}}, $showactor->as_text;
+											push @{$prog{'credits'}{'actor'}}, encode('utf-8', $showactor->as_text);
 										}
 									}
 								}
@@ -432,7 +423,7 @@ sub fetch_listings {
 							# title (mandatory)
 							#		<span class="programmeheading">Baywatch</span>
 							my $showtitle = $show->look_down('_tag' => 'span', 'class' => 'programmeheading');
-							$prog{'title'} = [[ encode( 'utf-8', decode( 'windows-1255', $showtitle->as_text)), 'en' ]];
+							$prog{'title'} = [[ encode('utf-8', $showtitle->as_text), 'en' ]];
 							$showtitle->detach;
 							
 							
@@ -471,7 +462,7 @@ sub fetch_listings {
 									}
 								}
 								foreach my $category (@showcategories) {
-									push @{$prog{'category'}}, [ $category, 'en' ];
+									push @{$prog{'category'}}, [ encode('utf-8', $category), 'en' ];
 								}
 								$showcategory->left->detach;
 							}
@@ -483,7 +474,7 @@ sub fetch_listings {
 								$showdesc = $showdesc->as_text;
 								$showdesc .= '.' if ( (length $showdesc) && (substr $showdesc,-1,1 ne '.') );	# addend a fullstop
 								if (length $showdesc) {
-									$prog{'desc'} = [[ encode( 'utf-8', decode( 'windows-1255', $showdesc)), 'en' ]];
+									$prog{'desc'} = [[ encode('utf-8', $showdesc), 'en' ]];
 								}
 							}
 
@@ -547,7 +538,7 @@ sub fetch_listings {
 							# 	<span class="tvchannel">The Fabulous Buchannon Boys</span>
 							my $showeptitle = $show->look_down('_tag' => 'span', 'class' => 'tvchannel');
 							if ($showeptitle) {
-								$prog{'sub-title'} = [[ encode( 'utf-8', decode( 'windows-1255', $showeptitle->as_text)), 'en' ]];
+								$prog{'sub-title'} = [[ encode('utf-8', $showeptitle->as_text), 'en' ]];
 								$showeptitle->detach;
 							}
 						
@@ -560,6 +551,7 @@ sub fetch_listings {
 										$directors =~ s/ (with|and) /,/ig;
 										$directors =~ s/ (singer|actor|actress) //ig;			# strip these words
 										$directors =~ s/,,/,/g;	# delete empties
+										$directors = encode('utf-8', $directors);	# encode names into utf-8
 										#debug $directors;
 										my @directors = split(/,/, $directors);
 										s{^\s+|\s+$}{}g foreach @directors;	# strip leading & trailing spaces
@@ -577,6 +569,7 @@ sub fetch_listings {
 										$actors =~ s/ (also|starring|with|and) /,/ig;		# may be used to separate names
 										$actors =~ s/ (singer|actor|actress) //ig;			# strip these words
 										$actors =~ s/,,/,/g;	# delete empties
+										$actors = encode('utf-8', $actors);	# encode names into utf-8
 										#debug $actors;
 										my @actors = split(/,/, $actors);
 										s{^\s+|\s+$}{}g foreach @actors;	# strip leading & trailing spaces
@@ -762,7 +755,7 @@ sub fetch_channels {
 
       $channels->{"$id"} = {
         id => "$id",
-        'display-name' => [[ encode( 'utf-8', decode( 'windows-1255', $name)), 'en' ]],
+        'display-name' => [[ encode('utf-8', $name), 'en' ]],
         url => [ $ROOT_URL.$url ]
       };
 
